@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mecha-Stark Biometric Assembly</title>
+   
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        /* =========================================
+           1. DESIGN & INTERACTIVE BACKGROUND
+           ========================================= */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', Courier, monospace; }
+       
+        body {
+            background-color: #020304;
+            color: #00f3ff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        #cyber-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .main-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            perspective: 1200px;
+        }
+        /* =========================================
+           2. ORIGINAL SVG ANIMATIONS (MECHA FACE)
+           ========================================= */
+        .mecha-face {
+            width: 200px;
+            height: 220px;
+            margin-bottom: -20px;
+            z-index: 20;
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+        }
+        .face-part { fill: #0d1117; stroke-width: 2; opacity: 0; transform-origin: center; transition: all 0.8s cubic-bezier(0.1, 1, 0.2, 1); }
+        .part-top { stroke: #ffd700; transform: translateY(-100px); animation: assemblePart 1s cubic-bezier(0.2, 1, 0.3, 1) 0.5s forwards; }
+        .part-left { stroke: #ff2a2a; transform: translateX(-100px); animation: assemblePart 1s cubic-bezier(0.2, 1, 0.3, 1) 0.8s forwards; }
+        .part-right { stroke: #ff2a2a; transform: translateX(100px); animation: assemblePart 1s cubic-bezier(0.2, 1, 0.3, 1) 0.8s forwards; }
+        .part-jaw { stroke: #00f3ff; transform: translateY(100px); animation: assemblePart 1s cubic-bezier(0.2, 1, 0.3, 1) 1.1s forwards; }
+       
+        .part-eyes {
+            fill: #00f3ff;
+            opacity: 0;
+            filter: drop-shadow(0 0 8px #00f3ff) drop-shadow(0 0 15px #00f3ff);
+            animation: powerOnEyes 1.5s ease-in-out 1.8s forwards alternate infinite;
+        }
+        @keyframes assemblePart { 100% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; } }
+        @keyframes powerOnEyes { 0% { opacity: 0; fill: #0055ff; } 50% { opacity: 1; fill: #00f3ff; } 100% { opacity: 0.8; fill: #aae5ff; } }
+        /* =========================================
+           3. LOGIN UI & INPUTS
+           ========================================= */
+        .login-ui {
+            width: 340px;
+            padding: 40px 30px 30px 30px;
+            background: rgba(10, 15, 20, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-top: none;
+            box-shadow: 0 15px 30px rgba(0, 243, 255, 0.1);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(-30px) scale(0.95);
+            animation: revealUI 0.8s cubic-bezier(0.1, 0.9, 0.2, 1) 2.2s forwards;
+            backdrop-filter: blur(8px);
+            clip-path: polygon(0 10%, 10% 0, 90% 0, 100% 10%, 100% 100%, 0 100%);
+            transition: all 0.8s ease;
+            transform-style: preserve-3d;
+        }
+        @keyframes revealUI { 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        .login-ui h2 { margin-bottom: 20px; letter-spacing: 3px; font-size: 1.1rem; text-shadow: 0 0 10px #00f3ff; color: #fff; transition: 0.3s; }
+       
+        .input-group { margin-bottom: 15px; text-align: left; transition: all 0.5s ease;}
+        .input-group label { display: block; font-size: 0.75rem; margin-bottom: 5px; color: #aae5ff; letter-spacing: 2px; }
+        .input-group input {
+            width: 100%; padding: 10px;
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid rgba(0, 243, 255, 0.4);
+            color: #fff; font-family: inherit; font-size: 1rem;
+            outline: none; transition: 0.3s;
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%);
+        }
+        .input-group input:focus { border-color: #00f3ff; background: rgba(0, 243, 255, 0.15); box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2); }
+        button {
+            width: 100%; padding: 12px;
+            background: transparent; border: 1px solid #00f3ff;
+            color: #00f3ff; font-weight: bold; letter-spacing: 2px;
+            cursor: pointer; transition: 0.3s; margin-top: 5px;
+            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
+        }
+        button:hover { background: #00f3ff; color: #000; box-shadow: 0 0 15px #00f3ff; }
+       
+        .btn-bio { border-color: #aae5ff; color: #aae5ff; margin-top: 15px; }
+        .btn-bio:hover { background: #aae5ff; color: #000; box-shadow: 0 0 15px #aae5ff; }
+        .btn-register { border-color: #ffd700; color: #ffd700; }
+        .btn-register:hover { background: #ffd700; color: #000; box-shadow: 0 0 15px #ffd700; }
+        .toggle-link {
+            font-size: 0.7rem; color: #aae5ff; cursor: pointer; margin-top: 15px;
+            display: inline-block; letter-spacing: 1px; transition: 0.3s; text-decoration: underline;
+        }
+        .toggle-link:hover { color: #fff; }
+        .msg { margin-top: 15px; font-size: 0.8rem; letter-spacing: 1px; min-height: 18px; font-weight: bold; transition: 0.3s;}
+        .error { color: #ff2a2a; text-shadow: 0 0 8px #ff2a2a; }
+        .success { color: #00ff00; text-shadow: 0 0 8px #00ff00; }
+        .info { color: #ffd700; text-shadow: 0 0 8px #ffd700; }
+        .power-flash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; opacity: 0; z-index: 100; pointer-events: none;
+            transition: opacity 0.8s ease;
+        }
+        /* Panel Visibility */
+        .panel { display: none; opacity: 0; transition: all 0.4s ease; }
+        .panel.active { display: block; opacity: 1; }
+        /* Biometric Camera Box */
+        .video-container {
+            position: relative; width: 100%; height: 0; opacity: 0; margin-bottom: 0;
+            background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.4);
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%); overflow: hidden;
+            display: none; transform: scale(0.8);
+        }
+       
+        .video-container.active {
+            display: block;
+            animation: buildCamera 0.8s cubic-bezier(0.1, 1, 0.2, 1) forwards;
+        }
+       
+        @keyframes buildCamera {
+            0% { height: 0; opacity: 0; transform: scale(0.8) translateY(30px); margin-bottom: 0; clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%, 50% 50%); }
+            50% { height: 180px; opacity: 0.5; margin-bottom: 20px; clip-path: polygon(20% 0, 80% 0, 80% 100%, 20% 100%, 20% 100%, 20% 100%); }
+            100% { height: 180px; opacity: 1; margin-bottom: 20px; transform: scale(1) translateY(0); clip-path: polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%); }
+        }
+        #video { width: 100%; height: 100%; object-fit: cover; filter: contrast(1.2) brightness(0.9) grayscale(0.2); }
+        #overlay { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: none; }
+       
+        #ai-loader {
+            position: absolute; inset: 0; z-index: 10; background: rgba(10, 15, 20, 0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.8rem; letter-spacing: 2px; color: #00f3ff; text-shadow: 0 0 5px #00f3ff;
+            transition: opacity 0.5s ease;
+        }
+        /* =========================================
+           4. MEGATRON DISASSEMBLY
+           ========================================= */
+        .shatter-active .part-top { animation: flyUp 1.8s cubic-bezier(0.8, 0, 0.2, 1) forwards !important; }
+        .shatter-active .part-left { animation: flyLeft 1.8s cubic-bezier(0.8, 0, 0.2, 1) forwards !important; }
+        .shatter-active .part-right { animation: flyRight 1.8s cubic-bezier(0.8, 0, 0.2, 1) forwards !important; }
+        .shatter-active .part-jaw { animation: flyDown 1.8s cubic-bezier(0.8, 0, 0.2, 1) forwards !important; }
+        .shatter-active .part-eyes { opacity: 0 !important; transition: 0.1s; animation: none !important; }
+        @keyframes flyUp { to { transform: translateY(-400px) translateZ(200px) rotateX(70deg) rotateZ(45deg); opacity: 0; } }
+        @keyframes flyLeft { to { transform: translateX(-400px) translateZ(150px) rotateY(-70deg) rotateZ(-45deg); opacity: 0; } }
+        @keyframes flyRight { to { transform: translateX(400px) translateZ(150px) rotateY(70deg) rotateZ(45deg); opacity: 0; } }
+        @keyframes flyDown { to { transform: translateY(400px) translateZ(200px) rotateX(-70deg); opacity: 0; } }
+        
+        .login-ui.shatter-active {
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+            pointer-events: none;
+        }
+        .login-ui.shatter-active h2 { animation: childUp 1.6s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+        .login-ui.shatter-active .input-group:nth-of-type(1) { animation: childLeft 1.5s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+        .login-ui.shatter-active .input-group:nth-of-type(2) { animation: childRight 1.5s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+        .login-ui.shatter-active button { animation: childDown 1.4s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+        .login-ui.shatter-active span.toggle-link { animation: childDownFar 1.3s cubic-bezier(0.7, 0, 0.2, 1) forwards; }
+        @keyframes childUp { to { transform: translateY(-250px) translateZ(100px) rotate(-15deg) scale(1.2); opacity: 0; filter: blur(5px); } }
+        @keyframes childLeft { to { transform: translateX(-350px) translateZ(50px) rotateY(-50deg) scale(0.8); opacity: 0; filter: blur(5px); } }
+        @keyframes childRight { to { transform: translateX(350px) translateZ(50px) rotateY(50deg) scale(0.8); opacity: 0; filter: blur(5px); } }
+        @keyframes childDown { to { transform: translateY(300px) translateZ(100px) rotateX(45deg) rotate(15deg); opacity: 0; filter: blur(5px); } }
+        @keyframes childDownFar { to { transform: translateY(400px) translateZ(50px) rotate(30deg); opacity: 0; filter: blur(5px); } }
+        
+        #mech-fx-container {
+            position: absolute; inset: 0; z-index: 9999; pointer-events: none; overflow: visible; display: none;
+        }
+       
+        .mech-spark {
+            position: absolute; top: 50%; left: 50%;
+            width: 3px; height: 12px; background: #00f3ff;
+            border-radius: 2px; box-shadow: 0 0 10px #00f3ff, 0 0 20px #fff;
+            opacity: 0;
+            animation: sparkFly 1.5s cubic-bezier(0.1, 1, 0.2, 1) forwards;
+        }
+        @keyframes sparkFly {
+            0% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; }
+            100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--rot)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="cyber-bg"></canvas>
+    <div class="power-flash" id="flash"></div>
+    <div id="mech-fx-container"></div>
+    <div class="main-container" id="main-container">
+        <svg class="mecha-face" id="mecha-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="face-part part-top" points="40,20 160,20 180,70 100,90 20,70" />
+            <polygon class="face-part part-left" points="20,75 95,95 85,150 30,120" />
+            <polygon class="face-part part-right" points="180,75 105,95 115,150 170,120" />
+            <polygon class="face-part part-jaw" points="80,155 120,155 100,195" />
+            <polygon class="part-eyes" points="40,95 85,105 50,115" />
+            <polygon class="part-eyes" points="160,95 115,105 150,115" />
+        </svg>
+        <div class="login-ui" id="login-box">
+            <h2 id="ui-title">SYSTEM LOGIN</h2>
+           
+            <div class="video-container" id="camera-wrapper">
+                <div id="ai-loader"><span>BOOTING OPTICS...</span></div>
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="overlay"></canvas>
+            </div>
+            <div id="panel-standard" class="panel active">
+                <div class="input-group">
+                    <label>AUTHORIZATION ID</label>
+                    <input type="text" id="username" autocomplete="off" spellcheck="false" value="aryan">
+                </div>
+                <div class="input-group">
+                    <label>PASSCODE</label>
+                    <input type="password" id="password">
+                </div>
+                <button onclick="authenticateStandard()" id="btn-std-login">INITIALIZE</button>
+               
+                <button onclick="triggerMegatronTransition()" class="btn-bio">LOGIN WITH FACE</button>
+               
+                <span class="toggle-link" onclick="switchMode('master')" style="color:#ffd700;">Register New Face</span>
+            </div>
+            <div id="panel-master" class="panel">
+                <div class="input-group">
+                    <label>MASTER SECURITY CODE</label>
+                    <input type="password" id="master-password" placeholder="Required for Enrollment">
+                </div>
+                <button onclick="verifyMaster()" class="btn-register">VERIFY OVERRIDE</button>
+                <span class="toggle-link" onclick="switchMode('standard')">Abort Override</span>
+            </div>
+            <div id="panel-biometric" class="panel">
+                <button onclick="authenticateFace()" id="btn-face-login">ANALYZE BIOMETRICS</button>
+                <span class="toggle-link" onclick="switchMode('standard')">Return to Keyboard Login</span>
+            </div>
+            <div id="panel-register" class="panel">
+                <div class="input-group">
+                    <label>SUBJECT DESIGNATION</label>
+                    <input type="text" id="reg-name" placeholder="Enter ID/Name" autocomplete="off" spellcheck="false">
+                </div>
+                <button onclick="registerFace()" class="btn-register" id="btn-reg">ENROLL BIOMETRICS</button>
+                <span class="toggle-link" onclick="switchMode('standard')">Cancel Enrollment</span>
+            </div>
+            <div class="msg info" id="message">AWAITING INPUT...</div>
+        </div>
+    </div>
+    <script>
+        // ==========================================
+        // INTERACTIVE CYBER BACKGROUND
+        // ==========================================
+        const canvas = document.getElementById('cyber-bg');
+        const ctx = canvas.getContext('2d');
+        let particlesArray = [];
+        let mouse = { x: null, y: null, radius: 150 };
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        class Particle {
+            constructor(x, y, directionX, directionY, size, color) {
+                this.x = x;
+                this.y = y;
+                this.directionX = directionX;
+                this.directionY = directionY;
+                this.size = size;
+                this.color = color;
+                this.baseX = x;
+                this.baseY = y;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            update() {
+                if (this.x > canvas.width || this.x < 0) this.directionX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.directionY *= -1;
+
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+               
+                if (distance < mouse.radius && distance > 0) {
+                    const force = (mouse.radius - distance) / mouse.radius;
+                    this.x -= (dx / distance) * force * 2;
+                    this.y -= (dy / distance) * force * 2;
+                } else {
+                    if (this.x !== this.baseX) this.x += (this.baseX - this.x) / 30;
+                    if (this.y !== this.baseY) this.y += (this.baseY - this.y) / 30;
+                }
+                this.x += this.directionX;
+                this.y += this.directionY;
+                this.draw();
+            }
+        }
+
+        function initParticles() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            particlesArray = [];
+            const numberOfParticles = Math.floor((canvas.height * canvas.width) / 10000);
+            for (let i = 0; i < numberOfParticles; i++) {
+                const size = Math.random() * 1.5 + 0.5;
+                const x = Math.random() * (canvas.width - size * 2) + size;
+                const y = Math.random() * (canvas.height - size * 2) + size;
+                const directionX = Math.random() * 0.8 - 0.4;
+                const directionY = Math.random() * 0.8 - 0.4;
+                particlesArray.push(new Particle(x, y, directionX, directionY, size, '#00f3ff'));
+            }
+        }
+
+        function animateParticles() {
+            requestAnimationFrame(animateParticles);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+            }
+            connectParticles();
+        }
+
+        function connectParticles() {
+            for (let a = 0; a < particlesArray.length; a++) {
+                for (let b = a + 1; b < particlesArray.length; b++) {
+                    const dx = particlesArray[a].x - particlesArray[b].x;
+                    const dy = particlesArray[a].y - particlesArray[b].y;
+                    const distance = dx * dx + dy * dy;
+                    if (distance < (canvas.width * canvas.height) / 49) {
+                        const opacity = 1 - (distance / 15000);
+                        ctx.strokeStyle = `rgba(0, 243, 255, ${opacity * 0.2})`;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                        ctx.lineTo(particlesArray[b].x, particlesArray[b].y);
+                        ctx.stroke();
+                    }
+                }
+                
+                if (mouse.x && mouse.y) {
+                    const dx = particlesArray[a].x - mouse.x;
+                    const dy = particlesArray[a].y - mouse.y;
+                    const distance = dx * dx + dy * dy;
+                    if (distance < 20000) {
+                        const opacity = 1 - (distance / 20000);
+                        ctx.strokeStyle = `rgba(0, 243, 255, ${opacity * 0.5})`;
+                        ctx.lineWidth = 1.2;
+                        ctx.beginPath();
+                        ctx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                        ctx.lineTo(mouse.x, mouse.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // CONFIGURATION & STATE
+        // ==========================================
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+        const MASTER_PASSCODE = '782410';
+       
+        const DOM = {
+            video: document.getElementById('video'),
+            overlay: document.getElementById('overlay'),
+            msg: document.getElementById('message'),
+            mainContainer: document.getElementById('main-container'),
+            flash: document.getElementById('flash'),
+            title: document.getElementById('ui-title'),
+            cameraWrapper: document.getElementById('camera-wrapper'),
+            loader: document.getElementById('ai-loader'),
+            loginBox: document.getElementById('login-box'),
+            mechaSvg: document.getElementById('mecha-svg'),
+            fxContainer: document.getElementById('mech-fx-container')
+        };
+       
+        let faceMatcher = null;
+        let db = null;
+        let stream = null;
+        let modelsLoaded = false;
+        let detectionInterval = null;
+
+        // ==========================================
+        // MEGATRON DISASSEMBLY
+        // ==========================================
+        function generateMechanicalFX() {
+            DOM.fxContainer.innerHTML = '';
+            for (let i = 0; i < 30; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'mech-spark';
+                const tx = (Math.random() - 0.5) * 1000;
+                const ty = (Math.random() - 0.5) * 1000;
+                const rot = Math.random() * 360;
+                spark.style.setProperty('--tx', `${tx}px`);
+                spark.style.setProperty('--ty', `${ty}px`);
+                spark.style.setProperty('--rot', `${rot}deg`);
+                DOM.fxContainer.appendChild(spark);
+            }
+        }
+
+        function triggerMegatronTransition() {
+            DOM.msg.textContent = "";
+            DOM.mechaSvg.classList.add('shatter-active');
+            DOM.loginBox.classList.add('shatter-active');
+            generateMechanicalFX();
+            DOM.fxContainer.style.display = 'block';
+           
+            setTimeout(() => {
+                DOM.fxContainer.style.display = 'none';
+                DOM.mechaSvg.classList.remove('shatter-active');
+                DOM.loginBox.classList.remove('shatter-active');
+                document.getElementById('panel-standard').classList.remove('active');
+               
+                DOM.title.textContent = "BIOMETRIC SCANNER";
+                DOM.cameraWrapper.classList.add('active');
+                document.getElementById('panel-biometric').classList.add('active');
+                DOM.msg.textContent = "AWAITING INPUT...";
+                DOM.msg.className = "msg info";
+               
+                bootCameraSystem();
+            }, 1800);
+        }
+
+        // ==========================================
+        // UI & PANEL ROUTING
+        // ==========================================
+        function switchMode(mode) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            DOM.msg.textContent = "AWAITING INPUT...";
+            DOM.msg.className = "msg info";
+            
+            if (mode === 'standard' || mode === 'master') {
+                stopCamera();
+                DOM.cameraWrapper.classList.remove('active');
+            }
+            
+            setTimeout(() => {
+                if (mode === 'standard') {
+                    DOM.title.textContent = "SYSTEM LOGIN";
+                    document.getElementById('password').value = '';
+                    document.getElementById('panel-standard').classList.add('active');
+                } else if (mode === 'master') {
+                    DOM.title.textContent = "SECURITY OVERRIDE";
+                    document.getElementById('master-password').value = '';
+                    document.getElementById('panel-master').classList.add('active');
+                } else if (mode === 'register') {
+                    DOM.title.textContent = "ENROLL SUBJECT";
+                    DOM.cameraWrapper.classList.add('active');
+                    document.getElementById('reg-name').value = '';
+                    document.getElementById('panel-register').classList.add('active');
+                    bootCameraSystem();
+                }
+            }, 50);
+        }
+
+        function triggerErrorShake() {
+            const mc = DOM.mainContainer;
+            mc.style.transform = "translateX(8px)";
+            setTimeout(() => mc.style.transform = "translateX(-8px)", 60);
+            setTimeout(() => mc.style.transform = "translateX(8px)", 120);
+            setTimeout(() => mc.style.transform = "translateX(-8px)", 180);
+            setTimeout(() => mc.style.transform = "translateX(0)", 240);
+        }
+
+        function grantAccess(btn, name, confidence = null) {
+            const confText = confidence ? ` [${confidence}%]` : '';
+            DOM.msg.textContent = `IDENTITY CONFIRMED: ${name}${confText}`;
+            DOM.msg.className = "msg success";
+           
+            btn.textContent = "SYSTEM BOOTING...";
+            btn.style.background = "#00f3ff";
+            btn.style.color = "#000";
+            btn.style.boxShadow = "0 0 25px #00f3ff";
+            
+            setTimeout(() => {
+                DOM.mainContainer.style.transition = "all 1s ease";
+                DOM.mainContainer.style.transform = "scale(2)";
+                DOM.mainContainer.style.opacity = "0";
+                DOM.flash.style.opacity = "1";
+            }, 1200);
+            
+            setTimeout(() => {
+                window.location.href = 'main.html';
+            }, 2000);
+        }
+
+        // ==========================================
+        // AUTHENTICATION
+        // ==========================================
+        function authenticateStandard() {
+            const user = document.getElementById('username').value.toLowerCase().trim();
+            const pass = document.getElementById('password').value;
+            const btn = document.getElementById('btn-std-login');
+            
+            if (user === 'aryan' && pass === MASTER_PASSCODE) {
+                grantAccess(btn, 'ARYAN');
+            } else {
+                DOM.msg.textContent = "UNAUTHORIZED ACCESS DETECTED.";
+                DOM.msg.className = "msg error";
+                document.getElementById('password').value = '';
+                triggerErrorShake();
+            }
+        }
+
+        function verifyMaster() {
+            const pass = document.getElementById('master-password').value;
+            if (pass === MASTER_PASSCODE) {
+                DOM.msg.textContent = "OVERRIDE ACCEPTED. BOOTING CAMERA...";
+                DOM.msg.className = "msg success";
+                setTimeout(() => switchMode('register'), 800);
+            } else {
+                DOM.msg.textContent = "INVALID MASTER CODE.";
+                DOM.msg.className = "msg error";
+                document.getElementById('master-password').value = '';
+                triggerErrorShake();
+            }
+        }
+
+        // ==========================================
+        // INDEXED DB
+        // ==========================================
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("MechaStarkBiometrics", 1);
+                request.onupgradeneeded = e => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains("faces")) {
+                        database.createObjectStore("faces", { keyPath: "name" });
+                    }
+                };
+                request.onsuccess = e => { db = e.target.result; resolve(); };
+                request.onerror = e => reject(e.target.error);
+            });
+        }
+
+        async function loadFacesFromDB() {
+            return new Promise(resolve => {
+                const transaction = db.transaction(["faces"], "readonly");
+                const store = transaction.objectStore("faces");
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    if (request.result.length > 0) {
+                        const labeledDescriptors = request.result.map(record => {
+                            return new faceapi.LabeledFaceDescriptors(
+                                record.name, 
+                                [new Float32Array(record.descriptor)]
+                            );
+                        });
+                        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    } else {
+                        faceMatcher = null;
+                    }
+                    resolve();
+                };
+            });
+        }
+
+        async function saveFaceToDB(name, descriptor) {
+            return new Promise(resolve => {
+                const transaction = db.transaction(["faces"], "readwrite");
+                const store = transaction.objectStore("faces");
+                store.put({ name, descriptor: Array.from(descriptor) });
+                transaction.oncomplete = () => resolve();
+            });
+        }
+
+        // ==========================================
+        // CAMERA & FACE API
+        // ==========================================
+        async function bootCameraSystem() {
+            try {
+                DOM.loader.style.display = 'flex';
+                DOM.loader.style.opacity = '1';
+                
+                if (!modelsLoaded) {
+                    await Promise.all([
+                        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                    ]);
+                    modelsLoaded = true;
+                    await initDB();
+                }
+               
+                await loadFacesFromDB();
+                
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                DOM.video.srcObject = stream;
+                
+                DOM.video.onplay = () => {
+                    DOM.loader.style.opacity = '0';
+                    setTimeout(() => DOM.loader.style.display = 'none', 500);
+                   
+                    const displaySize = { 
+                        width: DOM.video.clientWidth, 
+                        height: DOM.video.clientHeight 
+                    };
+                    faceapi.matchDimensions(DOM.overlay, displaySize);
+                    
+                    if (detectionInterval) clearInterval(detectionInterval);
+                    detectionInterval = setInterval(async () => {
+                        const detections = await faceapi.detectAllFaces(DOM.video).withFaceLandmarks();
+                        const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                        const ctxOverlay = DOM.overlay.getContext('2d');
+                        ctxOverlay.clearRect(0, 0, DOM.overlay.width, DOM.overlay.height);
+                        faceapi.draw.drawDetections(DOM.overlay, resizedDetections, { boxColor: '#00f3ff' });
+                    }, 100);
+                };
+            } catch (err) {
+                DOM.msg.textContent = "CRITICAL ERROR: CAMERA FAILED.";
+                DOM.msg.className = "msg error";
+                DOM.loader.style.opacity = '0';
+                triggerErrorShake();
+                console.error(err);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            const ctx = DOM.overlay.getContext('2d');
+            ctx.clearRect(0, 0, DOM.overlay.width, DOM.overlay.height);
+        }
+
+        // ==========================================
+        // FACE ACTIONS
+        // ==========================================
+        async function registerFace() {
+            const nameInput = document.getElementById('reg-name').value.toUpperCase().trim();
+            const btn = document.getElementById('btn-reg');
+           
+            if (!nameInput) {
+                DOM.msg.textContent = "ERROR: DESIGNATION REQUIRED.";
+                DOM.msg.className = "msg error";
+                triggerErrorShake();
+                return;
+            }
+            
+            btn.textContent = "SCANNING...";
+            DOM.msg.textContent = "ANALYZING BIOMETRICS...";
+            DOM.msg.className = "msg info";
+            
+            const detection = await faceapi.detectSingleFace(DOM.video).withFaceLandmarks().withFaceDescriptor();
+            
+            if (detection) {
+                await saveFaceToDB(nameInput, detection.descriptor);
+                await loadFacesFromDB();
+               
+                DOM.msg.textContent = `BIOMETRICS SAVED FOR: ${nameInput}`;
+                DOM.msg.className = "msg success";
+                document.getElementById('reg-name').value = '';
+               
+                setTimeout(() => switchMode('standard'), 2000);
+            } else {
+                DOM.msg.textContent = "NO FACE DETECTED. REALIGN.";
+                DOM.msg.className = "msg error";
+                triggerErrorShake();
+            }
+            btn.textContent = "ENROLL BIOMETRICS";
+        }
+
+        async function authenticateFace() {
+            const btn = document.getElementById('btn-face-login');
+            if (!faceMatcher) {
+                DOM.msg.textContent = "ERROR: NO SUBJECTS ENROLLED.";
+                DOM.msg.className = "msg error";
+                triggerErrorShake();
+                return;
+            }
+            
+            btn.textContent = "AUTHENTICATING...";
+            btn.style.color = "#000";
+            btn.style.background = "#00f3ff";
+            
+            const detection = await faceapi.detectSingleFace(DOM.video).withFaceLandmarks().withFaceDescriptor();
+            
+            if (detection) {
+                const match = faceMatcher.findBestMatch(detection.descriptor);
+                if (match.label !== 'unknown') {
+                    const confidence = Math.round((1 - match.distance) * 100);
+                    grantAccess(btn, match.label, confidence);
+                } else {
+                    handleFaceFail(btn, "UNAUTHORIZED ACCESS DETECTED.");
+                }
+            } else {
+                handleFaceFail(btn, "TARGET NOT ACQUIRED.");
+            }
+        }
+
+        function handleFaceFail(btn, message) {
+            DOM.msg.textContent = message;
+            DOM.msg.className = "msg error";
+            btn.textContent = "ANALYZE BIOMETRICS";
+            btn.style.color = "#00f3ff";
+            btn.style.background = "transparent";
+            btn.style.boxShadow = "none";
+            triggerErrorShake();
+        }
+
+        // Initialize
+        initParticles();
+        animateParticles();
+    </script>
+</body>
+</html>
